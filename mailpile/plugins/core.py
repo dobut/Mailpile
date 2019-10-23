@@ -438,46 +438,6 @@ class DeleteMessages(Command):
                              result=result)
 
 
-class BrowseOrLaunch(Command):
-    """Launch browser and exit, if already running"""
-    SYNOPSIS = (None, 'browse_or_launch', None, None)
-    ORDER = ('Internals', 5)
-    CONFIG_REQUIRED = False
-    RAISES = (KeyboardInterrupt,)
-
-    @classmethod
-    def Browse(cls, sspec):
-        http_url = ('http://%s:%s%s/' % sspec
-                    ).replace('//0.0.0.0:', '//localhost:')
-        try:
-            MakePopenUnsafe()
-            webbrowser.open(http_url)
-            return http_url
-        except:
-            pass
-        finally:
-            MakePopenSafe()
-        return False
-
-    def command(self):
-        config = self.session.config
-
-        if config.http_worker:
-            sspec = config.http_worker.sspec
-        else:
-            sspec = (config.sys.http_host, config.sys.http_port,
-                     config.sys.http_path or '')
-
-        try:
-            socket.create_connection(sspec[:2])
-            self.Browse(sspec)
-            os._exit(127)
-        except IOError:
-            pass
-
-        return self._success(_('Launching Mailpile'), result=True)
-
-
 class RunWWW(Command):
     """Just run the web server"""
     SYNOPSIS = (None, 'www', None, '[<host:port/path>]')
@@ -2063,6 +2023,20 @@ class HelpSplash(Help):
     ORDER = ('Config', 9)
     CONFIG_REQUIRED = False
 
+    @classmethod
+    def Browse(cls, sspec):
+        http_url = ('http://%s:%s%s/' % sspec
+                    ).replace('//0.0.0.0:', '//localhost:')
+        try:
+            MakePopenUnsafe()
+            webbrowser.open(http_url)
+            return http_url
+        except:
+            pass
+        finally:
+            MakePopenSafe()
+        return False
+
     def command(self, interactive=True):
         from mailpile.auth import Authenticate
         http_worker = self.session.config.http_worker
@@ -2072,7 +2046,7 @@ class HelpSplash(Help):
             http_url = 'http://%s:%s%s/' % http_worker.httpd.sspec
             if (mailpile.platforms.InDesktopEnvironment()
                     and self.session.config.prefs.open_in_browser):
-                if BrowseOrLaunch.Browse(http_worker.httpd.sspec):
+                if self.Browse(http_worker.httpd.sspec):
                     in_browser = True
                     time.sleep(2)
         else:
@@ -2091,7 +2065,7 @@ class HelpSplash(Help):
 
 _plugins.register_commands(
     Load, Optimize, Rescan, DeleteMessages,
-    BrowseOrLaunch, RunWWW, ProgramStatus, CronStatus, HealthCheck,
+    RunWWW, ProgramStatus, CronStatus, HealthCheck,
     GpgCommand, ListDir, ChangeDir, CatFile, WritePID, Cleanup,
     ConfigPrint, ConfigSet, ConfigAdd, ConfigUnset, ConfigureMailboxes,
     ListLanguages, RenderPage, Output, Pipe,
